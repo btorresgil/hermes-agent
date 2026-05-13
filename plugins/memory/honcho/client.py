@@ -871,7 +871,6 @@ class HonchoClientConfig:
     def resolve_session_name(
         self,
         cwd: str | None = None,
-        session_title: str | None = None,
         session_id: str | None = None,
         gateway_session_key: str | None = None,
     ) -> str | None:
@@ -879,13 +878,11 @@ class HonchoClientConfig:
 
         Resolution order:
           1. Gateway session key (stable per-chat identifier from gateway platforms)
-          2. per-session strategy — Hermes session_id ({timestamp}_{hex}); authoritative,
-             so a generated title never remaps a live conversation
+          2. per-session strategy — Hermes session_id ({timestamp}_{hex})
           3. Manual directory override from sessions map
-          4. Hermes session title (from /title command; non-per-session)
-          5. per-repo strategy — git repo root directory name
-          6. per-directory strategy — directory basename
-          7. global strategy — workspace name
+          4. per-repo strategy — git repo root directory name
+          5. per-directory strategy — directory basename
+          6. global strategy — workspace name
         """
         import re
 
@@ -911,14 +908,6 @@ class HonchoClientConfig:
         manual = self.sessions.get(cwd)
         if manual:
             return manual
-
-        # /title mid-session remap (non-per-session).
-        if session_title:
-            sanitized = re.sub(r'[^a-zA-Z0-9_-]+', '-', session_title).strip('-')
-            if sanitized:
-                if self.session_peer_prefix and self.peer_name:
-                    return f"{self.peer_name}-{sanitized}"
-                return sanitized
 
         # per-repo: one Honcho session per git repository
         if self.session_strategy == "per-repo":

@@ -2,7 +2,7 @@
 
 Covers:
   - write_frequency parsing (async / turn / session / int)
-  - resolve_session_name with session_title
+  - resolve_session_name
   - HonchoSessionManager.save() routing per write_frequency
   - async writer thread lifecycle and retry
   - flush_all() drains pending messages
@@ -117,36 +117,18 @@ class TestWriteFrequencyParsing:
 
 
 # ---------------------------------------------------------------------------
-# resolve_session_name with session_title
+# resolve_session_name
 # ---------------------------------------------------------------------------
 
-class TestResolveSessionNameTitle:
-    def test_manual_override_beats_title(self):
+class TestResolveSessionName:
+    def test_manual_override_wins(self):
         cfg = HonchoClientConfig(sessions={"/my/project": "manual-name"})
-        result = cfg.resolve_session_name("/my/project", session_title="the-title")
+        result = cfg.resolve_session_name("/my/project", session_id="20260309_175514_9797dd")
         assert result == "manual-name"
 
-    def test_title_beats_dirname(self):
+    def test_dirname_used_by_default(self):
         cfg = HonchoClientConfig()
-        result = cfg.resolve_session_name("/some/dir", session_title="my-project")
-        assert result == "my-project"
-
-
-    def test_title_sanitized(self):
-        cfg = HonchoClientConfig()
-        result = cfg.resolve_session_name("/some/dir", session_title="my project/name!")
-        # trailing dashes stripped by .strip('-')
-        assert result == "my-project-name"
-
-
-    def test_none_title_falls_back_to_dirname(self):
-        cfg = HonchoClientConfig()
-        result = cfg.resolve_session_name("/some/dir", session_title=None)
-        assert result == "dir"
-
-    def test_empty_title_falls_back_to_dirname(self):
-        cfg = HonchoClientConfig()
-        result = cfg.resolve_session_name("/some/dir", session_title="")
+        result = cfg.resolve_session_name("/some/dir")
         assert result == "dir"
 
     def test_per_session_uses_session_id(self):
