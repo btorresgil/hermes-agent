@@ -850,6 +850,15 @@ PLATFORM_HINTS = {
     ),
     "discord": (
         "You are in a Discord server or group chat communicating with your user. "
+        "Use Discord Markdown only, not CommonMark/GitHub Markdown. "
+        "Headings: only `#`, `##`, `###`; never `####+`. "
+        "Subtext: use only `-# ` at line start. "
+        "Nested bullets: indent nested `-`/`*` with two spaces. "
+        "Blockquotes: every quoted line must start with `> `, "
+        "including blank lines, or Discord may split the quote. "
+        "Tables must be placed in a fenced code block. " 
+        "Avoid nested block layouts and indentation-sensitive Markdown "
+        "except fenced code blocks and simple nested lists. "
         "You can send media files natively: include MEDIA:/absolute/path/to/file "
         "in your response. Images (.png, .jpg, .webp) are sent as photo "
         "attachments, audio as file attachments. You can also include image URLs "
