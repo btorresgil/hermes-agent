@@ -856,7 +856,7 @@ PLATFORM_HINTS = {
         "Nested bullets: indent nested `-`/`*` with two spaces. "
         "Blockquotes: every quoted line must start with `> `, "
         "including blank lines, or Discord may split the quote. "
-        "Tables must be placed in a fenced code block. " 
+        "Tables must be placed in a fenced code block. "
         "Avoid nested block layouts and indentation-sensitive Markdown "
         "except fenced code blocks and simple nested lists. "
         "You can send media files natively: include MEDIA:/absolute/path/to/file "
