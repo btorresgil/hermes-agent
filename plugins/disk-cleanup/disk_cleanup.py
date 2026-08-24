@@ -158,6 +158,14 @@ _EMPTY_DIR_SWEEP_PRUNE_DIRS = frozenset({
     "site-packages", "__pycache__",
 })
 
+_BUILTIN_PROTECTED_TOP_LEVEL_ROOTS = frozenset({
+    "disk-cleanup", "logs", "memories", "sessions", "config.yaml",
+    "skills", "plugins", ".env", "USER.md", "MEMORY.md", "SOUL.md",
+    "auth.json", "hermes-agent", "patches", "projects", "skins", "themes",
+    "contributors", "profiles", "backups", "optional-skills",
+})
+
+
 
 # Paths under $HERMES_HOME that must NEVER be deleted by quick(),
 # regardless of what the stored category says.  This is a defense-in-depth
@@ -197,6 +205,33 @@ def fmt_size(n: float) -> str:
             return f"{n:.1f} {unit}"
         n /= 1024
     return f"{n:.1f} PB"
+
+
+def _protected_top_level_roots() -> set[str]:
+    """Return built-in and user-configured durable HERMES_HOME roots."""
+    roots = set(_BUILTIN_PROTECTED_TOP_LEVEL_ROOTS)
+    try:
+        from hermes_cli.config import load_config
+
+        configured = (load_config() or {}).get("disk_cleanup", {}).get(
+            "protected_roots", []
+        )
+    except Exception:
+        return roots
+    if not isinstance(configured, (list, tuple, set)):
+        return roots
+    for value in configured:
+        if not isinstance(value, str):
+            continue
+        root = value.strip()
+        if (
+            root
+            and root not in {".", ".."}
+            and "/" not in root
+            and "\\" not in root
+        ):
+            roots.add(root)
+    return roots
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +430,7 @@ def quick() -> Dict[str, Any]:
                 top.is_dir()
                 and not top.is_symlink()
                 and top.name not in _EMPTY_DIR_PROTECTED_TOP_LEVEL
+                and top.name not in _protected_top_level_roots()
                 and top.name not in _EMPTY_DIR_SWEEP_PRUNE_DIRS
             ):
                 sweep_stack.append((top, False))
@@ -577,16 +613,7 @@ def guess_category(path: Path) -> Optional[str]:
     try:
         rel = path.resolve().relative_to(hermes_home)
         top = rel.parts[0] if rel.parts else ""
-        if top in {
-            "disk-cleanup", "logs", "memories", "sessions", "config.yaml",
-            "skills", "plugins", ".env", "USER.md", "MEMORY.md", "SOUL.md",
-            "auth.json", "hermes-agent",
-            # User-authored and project trees — never auto-delete files
-            # inside these just because they happen to be named test_* or
-            # tmp_* (#75403, also #32164, #37721).
-            "patches", "projects", "skins", "themes", "contributors",
-            "profiles", "backups", "optional-skills",
-        }:
+        if top in _protected_top_level_roots():
             return None
         if top == "cron" or top == "cronjobs":
             # Only files under the disposable ``output/`` subtree are

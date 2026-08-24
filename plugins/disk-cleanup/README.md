@@ -39,6 +39,22 @@ Deletion rules (same as the original PR):
 /disk-cleanup forget <path>              # stop tracking
 ```
 
+## Configuration
+
+Add durable top-level directories under `$HERMES_HOME` to
+`disk_cleanup.protected_roots`. Protected roots are neither auto-tracked nor
+removed by the empty-directory sweep:
+
+```yaml
+disk_cleanup:
+  protected_roots:
+    - workspaces
+    - scripts
+    - data
+```
+
+Entries are directory names relative to `$HERMES_HOME`, not filesystem paths.
+
 ## Safety
 
 - `is_safe_path()` rejects anything outside `HERMES_HOME` or `/tmp/hermes-*`

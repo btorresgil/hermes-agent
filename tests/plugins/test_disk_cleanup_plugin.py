@@ -115,6 +115,29 @@ class TestGuessCategory:
         # Even though it matches test_* pattern, logs/ is excluded.
         assert dg.guess_category(p) is None
 
+    def test_respects_configured_protected_root(self, _isolate_env):
+        (_isolate_env / "config.yaml").write_text(
+            "disk_cleanup:\n  protected_roots:\n    - workspaces\n"
+        )
+        dg = _load_lib()
+        p = _isolate_env / "workspaces" / "project" / "test_persistent.py"
+        p.parent.mkdir(parents=True)
+        p.write_text("x")
+
+        assert dg.guess_category(p) is None
+
+    def test_configured_protected_root_is_not_empty_swept(self, _isolate_env):
+        (_isolate_env / "config.yaml").write_text(
+            "disk_cleanup:\n  protected_roots:\n    - workspaces\n"
+        )
+        dg = _load_lib()
+        empty_project_dir = _isolate_env / "workspaces" / "project"
+        empty_project_dir.mkdir(parents=True)
+
+        dg.quick()
+
+        assert empty_project_dir.exists()
+
     def test_cron_subtree_categorised(self, _isolate_env):
         dg = _load_lib()
         # Only files under ``cron/output/`` are disposable run artifacts.

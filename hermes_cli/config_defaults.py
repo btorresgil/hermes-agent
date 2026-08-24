@@ -10,6 +10,12 @@ DEFAULT_CONFIG = {
     "fallback_providers": [],
     "credential_pool_strategies": {},
     "toolsets": ["hermes-cli"],
+    # Durable roots below HERMES_HOME that disk-cleanup must never classify as
+    # ephemeral artifacts or remove when empty. Entries are immediate directory
+    # names, not paths (for example: "workspaces").
+    "disk_cleanup": {
+        "protected_roots": [],
+    },
     # SQLite journal mode used by every Hermes database opener. WAL is the
     # normal default; set DELETE for weak-fsync/shared filesystems where WAL is
     # not crash-safe (for example macOS virtiofs, NFS, or SMB).
