@@ -133,6 +133,24 @@ _NEVER_TRACK_TOP_LEVEL = frozenset({
     "kanban"})
 
 
+def _configured_protected_roots() -> frozenset[str]:
+    """Read durable immediate-child names in the current profile, without caching."""
+    try:
+        from hermes_cli.config_effective import load_user_config_effective
+
+        section = load_user_config_effective().get("disk_cleanup", {})
+    except Exception:
+        # Optional configuration must not disable the built-in safety exclusions.
+        return frozenset()
+    configured = section.get("protected_roots", []) if isinstance(section, dict) else []
+    if not isinstance(configured, (list, tuple, set)):
+        return frozenset()
+    return frozenset(
+        root for value in configured if isinstance(value, str)
+        if (root := value.strip()) and root not in {".", ".."} and "/" not in root and "\\" not in root
+    )
+
+
 def _is_protected_dir(p: Path) -> bool:
     """A tracked DIRECTORY that is HERMES_HOME itself or lives under a protected top-level tree
     (``cache/terminal`` holds terminal snapshots) is never rmtree'd; only its files age out."""
@@ -140,7 +158,7 @@ def _is_protected_dir(p: Path) -> bool:
         return False
     with contextlib.suppress(ValueError, OSError):
         rel = p.resolve().relative_to(get_hermes_home())
-        return not rel.parts or rel.parts[0] in _EMPTY_DIR_PROTECTED_TOP_LEVEL
+        return not rel.parts or rel.parts[0] in _EMPTY_DIR_PROTECTED_TOP_LEVEL | _configured_protected_roots()
     return False
 
 @functools.lru_cache(maxsize=8)  # keyed by home: a multiplexed process serves several profiles
@@ -259,8 +277,8 @@ def dry_run() -> tuple[list[dict], list[dict]]:
     auto, prompt = [], []
     for item, p, age in _live_items(load_tracked(), datetime.now(UTC)):
         cat = item["category"]
-        # Stale cron-output entries and protected dirs are skipped by quick(); omit them here too.
-        if (cat == "cron-output" and guess_category(p) != "cron-output") or _is_protected_dir(p):
+        # Match quick()'s stale-category and protected-directory checks in the preview.
+        if (cat in _STALE_SKIP_NOTE and guess_category(p) != cat) or _is_protected_dir(p):
             continue
         if _is_auto_delete(cat, age):
             auto.append(item)
@@ -315,8 +333,9 @@ def _sweep_empty_dirs(hermes_home: Path) -> int:
     rglob over a checkout+venv under HERMES_HOME can stall the gateway loop for minutes).
     Iterative post-order so parents emptied by child removal are caught."""
     removed = 0
+    protected = _EMPTY_DIR_PROTECTED_TOP_LEVEL | _configured_protected_roots()
     stack: list[tuple[Path, bool]] = [
-        (top, False) for top in _subdirs(hermes_home, _EMPTY_DIR_PROTECTED_TOP_LEVEL | _EMPTY_DIR_SWEEP_PRUNE_DIRS)]
+        (top, False) for top in _subdirs(hermes_home, protected | _EMPTY_DIR_SWEEP_PRUNE_DIRS)]
     while stack:
         dirpath, visited = stack.pop()
         if visited:
@@ -413,7 +432,7 @@ def guess_category(path: Path) -> Optional[str]:
     with contextlib.suppress(ValueError):  # not under HERMES_HOME (/tmp/hermes-*) — name rules only
         rel = path.resolve().relative_to(get_hermes_home())
         top = rel.parts[0] if rel.parts else ""
-        if top in _NEVER_TRACK_TOP_LEVEL or _is_protected_dir(path):
+        if top in _NEVER_TRACK_TOP_LEVEL | _configured_protected_roots() or _is_protected_dir(path):
             return None
         if top in ("cron", "cronjobs"):
             # Only the disposable ``output/`` subtree; control-plane state (jobs.json,
