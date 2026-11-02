@@ -41,6 +41,32 @@ Deletion rules (same as the original PR):
 /disk-cleanup forget <path>              # stop tracking
 ```
 
+## Configured durable roots
+
+To extend the built-in exclusions for this profile, set immediate-child directory
+names in `$HERMES_HOME/config.yaml`:
+
+```yaml
+disk_cleanup:
+  protected_roots:
+    - workspaces
+    - scripts
+    - data
+```
+
+These roots and their descendants are never automatically classified/tracked,
+and empty directories within them are not swept. Tracked directories under them
+are not recursively deleted. Stale tracked `test` entries are revalidated, omitted
+from the dry-run preview, and dropped without deleting their files during `quick`.
+This is **not** universal immunity for explicitly tracked files in other categories:
+for example, an explicitly tracked `temp` file can still age out.
+
+The default is `[]`; configured names add to, never replace, upstream built-in
+Git, cron, path, and durable-tree protections. Whitespace is trimmed. Empty names,
+`.` / `..`, slash/backslash paths, and nonstring entries are ignored; a malformed
+setting or unavailable config retains the built-ins. Reads follow the current
+profile's config, including managed overlays, without a plugin-level cache.
+
 ## Safety
 
 <!-- no-tmp: ok — documents the legacy scratch scope this plugin cleans up -->
